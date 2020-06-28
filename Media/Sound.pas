@@ -129,7 +129,7 @@ begin
       FOnError(Self, Format('Failed to get volume. Error: %d', [ReturnCode]));
     end;
   end else begin
-    Timestamp    := Now;
+    Timestamp := Now;
     if (CurrentVolume <> FTargetVolume) then begin
       AdjustVolume := FAutoAdjustVolume;
       if (Assigned(FOnTargetViolation)) then begin
@@ -137,7 +137,7 @@ begin
          // slide or even set TargetVolume to some new value.
          FOnTargetViolation(Self, CurrentVolume, AdjustVolume);
       end;
-      if (AdjustVolume) then begin
+      if (AdjustVolume and (CurrentVolume <> FTargetVolume)) then begin
         WaveOutSetVolumePercentage(FTargetVolume);
       end;
       FLastViolation := Timestamp;
