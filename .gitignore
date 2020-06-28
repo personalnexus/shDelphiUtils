@@ -1,0 +1,7 @@
+__history/
+*.exe
+*.bpl
+*.dcp
+*.dcu
+*.local
+*.identcache
