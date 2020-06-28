@@ -20,20 +20,24 @@ type
     FCheckTimer:        TTimer;
     FCheckInterval:     Cardinal;
     FLastCheck:         TDateTime;
+    FLastViolation:     TDateTime;
     FOnError:           TVolumeMonitorErrorEvent;
     FOnTargetViolation: TVolumeMonitorTargetViolationEvent;
     FTargetVolume:      TPercentage;
     FAutoAdjustVolume:  Boolean;
-    procedure Check(Sender: TObject);
+    procedure CheckTimed(Sender: TObject);
     procedure SetCheckInterval(AValue: Cardinal);
 
   public
     constructor Create;
     destructor Destroy; override;
 
+    procedure Check;
+
     property AutoAdjustVolume: Boolean read FAutoAdjustVolume write FAutoAdjustVolume;
     property CheckInterval: Cardinal read FCheckInterval write SetCheckInterval;
     property LastCheck: TDateTime read FLastCheck;
+    property LastViolation: TDateTime read FLastViolation;
     property TargetVolume: TPercentage read FTargetVolume write FTargetVolume;
 
     property OnTargetViolation: TVolumeMonitorTargetViolationEvent read FOnTargetViolation write FOnTargetViolation;
@@ -107,11 +111,17 @@ end;
 
 { TVolumeMonitor - Main functionality }
 
-procedure TVolumeMonitor.Check(Sender: TObject);
+procedure TVolumeMonitor.CheckTimed(Sender: TObject);
+begin
+  Check;
+end;
+
+procedure TVolumeMonitor.Check;
 var
   ReturnCode:    Cardinal;
   CurrentVolume: TPercentage;
   AdjustVolume:  Boolean;
+  Timestamp:     TDateTime;
 begin
   ReturnCode := WaveOutGetVolumePercentage(CurrentVolume);
   if (ReturnCode <> MMSYSERR_NOERROR) then begin
@@ -119,6 +129,7 @@ begin
       FOnError(Self, Format('Failed to get volume. Error: %d', [ReturnCode]));
     end;
   end else begin
+    Timestamp    := Now;
     if (CurrentVolume <> FTargetVolume) then begin
       AdjustVolume := FAutoAdjustVolume;
       if (Assigned(FOnTargetViolation)) then begin
@@ -129,8 +140,9 @@ begin
       if (AdjustVolume) then begin
         WaveOutSetVolumePercentage(FTargetVolume);
       end;
+      FLastViolation := Timestamp;
     end;
-    FLastCheck := Now;
+    FLastCheck := Timestamp;
   end;
 end;
 
