@@ -71,7 +71,7 @@ begin
   Result := WaveOutGetVolume(WAVE_MAPPER, @Volume);
   {$WARN BOUNDS_ERROR ON}
   if (Result = MMSYSERR_NOERROR) then begin
-    LeftVolume := Lo(Volume);
+    LeftVolume := LoWord(Volume);
     AVolumePercentage := Round(100 * LeftVolume / MAXWORD);
   end;
 end;
@@ -96,7 +96,7 @@ begin
     raise EInvalidOperation.Create('Cannot monitor volume, because WAVECAPS_VOLUME is not supported.' );
   end;
   FCheckTimer := TTimer.Create(nil);
-  FCheckTimer.OnTimer := Check;
+  FCheckTimer.OnTimer := CheckTimed;
   FCheckTimer.Interval := 0;
   FCheckTimer.Enabled := True;
 
