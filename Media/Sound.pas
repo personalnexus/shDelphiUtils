@@ -28,6 +28,8 @@ type
     procedure CheckTimed(Sender: TObject);
     procedure SetCheckInterval(AValue: Cardinal);
 
+    function CallWithErrorHandling(AOperation: string; AReturnCode: Cardinal): Boolean;
+
   public
     constructor Create;
     constructor CreateStarted(ACheckInterval: Cardinal);
@@ -126,17 +128,11 @@ end;
 
 procedure TVolumeMonitor.Check;
 var
-  ReturnCode:    Cardinal;
   CurrentVolume: TPercentage;
   AdjustVolume:  Boolean;
   Timestamp:     TDateTime;
 begin
-  ReturnCode := WaveOutGetVolumePercentage(CurrentVolume);
-  if (ReturnCode <> MMSYSERR_NOERROR) then begin
-    if (Assigned(FOnError)) then begin
-      FOnError(Self, Format('Failed to get volume. Error: %d', [ReturnCode]));
-    end;
-  end else begin
+  if (CallWithErrorHandling('WaveOutGetVolume', WaveOutGetVolumePercentage(CurrentVolume))) then begin
     Timestamp := Now;
     if (CurrentVolume <> FTargetVolume) then begin
       AdjustVolume := FAutoAdjustVolume;
@@ -146,11 +142,19 @@ begin
          FOnTargetViolation(Self, CurrentVolume, AdjustVolume);
       end;
       if (AdjustVolume and (CurrentVolume <> FTargetVolume)) then begin
-        WaveOutSetVolumePercentage(FTargetVolume);
+        CallWithErrorHandling('WaveOutSetVolume', WaveOutSetVolumePercentage(FTargetVolume));
       end;
       FLastViolation := Timestamp;
     end;
     FLastCheck := Timestamp;
+  end;
+end;
+
+function TVolumeMonitor.CallWithErrorHandling(AOperation: string; AReturnCode: Cardinal): Boolean;
+begin
+  Result := AReturnCode = MMSYSERR_NOERROR;
+  if (not Result) and Assigned(FOnError) then begin
+    FOnError(Self, Format('%s failed. Error: %d', [AOperation, AReturnCode]));
   end;
 end;
 
@@ -161,4 +165,5 @@ begin
   FCheckTimer.Interval := AValue;
 end;
     
+
 end.
