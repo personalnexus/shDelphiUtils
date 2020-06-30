@@ -30,6 +30,7 @@ type
 
   public
     constructor Create;
+    constructor CreateStarted(ACheckInterval: Cardinal);
     destructor Destroy; override;
 
     procedure Check;
@@ -88,6 +89,12 @@ end;
 
 { TVolumeMonitor - Initialization/finalization }
 
+constructor TVolumeMonitor.CreateStarted(ACheckInterval: Cardinal);
+begin
+  Create;
+  CheckInterval := ACheckInterval;
+end;
+
 constructor TVolumeMonitor.Create;
 begin
   inherited Create;
@@ -101,6 +108,7 @@ begin
   FCheckTimer.Enabled := True;
 
   FAutoAdjustVolume := True;
+  FTargetVolume := 100;
 end;
 
 destructor TVolumeMonitor.Destroy;
