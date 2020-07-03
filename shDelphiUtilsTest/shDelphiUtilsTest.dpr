@@ -6,10 +6,11 @@ uses
   SysUtils,
   Classes,
   Windows,
-  Queues in '..\Collections\Queues.pas';
+  CollectionInterfaces,
+  Queues;
 
 var
-  Queue: TConcurrentQueue<Integer>;
+  Queue: IQueue<Integer>;
   CompletedThreads: Integer;
 
 const
@@ -31,6 +32,7 @@ var
   Value: Integer;
   DequeueCount: Integer;
 begin
+  DequeueCount := 0;
   repeat
     if (Queue.TryDequeue(Value)) then begin
       Inc(DequeueCount);
@@ -103,12 +105,7 @@ end;
 procedure EnqueueAndDequeueMultiThreaded;
 var
   ThreadIndex: Integer;
-  Value: Integer;
-  DequeueCount: Integer;
-  Start: TDateTime;
 begin
-  DequeueCount := 0;
-  Start := Now;
   for ThreadIndex := 1 to THREAD_COUNT do begin
     TThread.CreateAnonymousThread(DequeueAsync).Start;
     Sleep(16);
@@ -130,12 +127,14 @@ begin
   try
     QueueProc();
   finally
-    Queue.Free;
+    Queue := nil;
   end;
   Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed ' + ProcName + ' successfully');
 end;
 
 begin
+  ReportMemoryLeaksOnShutdown := True;
+
   Writeln('Testing with ' + IntToStr(THREAD_COUNT * MESSAGE_COUNT) + ' messages.');
   Writeln('Press Enter to begin.');
   Readln;

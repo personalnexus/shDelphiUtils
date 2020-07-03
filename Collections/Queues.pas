@@ -2,6 +2,9 @@ unit Queues;
     
 interface
 
+uses
+  CollectionInterfaces;
+
 type
   TConcurrentQueueItem<TValue> = class
     FValue: TValue;
@@ -10,14 +13,19 @@ type
     constructor Create(const AValue: TValue);
   end;
 
-  TConcurrentQueue<TValue> = class(TObject)
+  TConcurrentQueue<TValue> = class(TInterfacedObject, IQueue<TValue>)
   private
     FHead:  TConcurrentQueueItem<TValue>;
     FTail:  TConcurrentQueueItem<TValue>;
     FCount: Integer;
 
+    function GetCount: Integer;
+
   public
     constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
 
     procedure Enqueue(const AValue: TValue);
     function TryDequeue(out AValue: TValue): Boolean;
@@ -46,6 +54,27 @@ begin
   inherited Create;
   FTail := TConcurrentQueueItem<TValue>.Create(Default(TValue));
   FHead := FTail;
+end;
+
+destructor TConcurrentQueue<TValue>.Destroy;
+begin
+  Clear;
+  FTail.Free;
+  FTail := nil;
+  FHead := nil;
+  inherited Destroy;
+end;
+
+function TConcurrentQueue<TValue>.GetCount: Integer;
+begin
+  Result := FCount;
+end;
+
+procedure TConcurrentQueue<TValue>.Clear;
+var
+  Value: TValue;
+begin
+  while (TryDequeue(Value)) do;
 end;
 
 procedure TConcurrentQueue<TValue>.Enqueue(const AValue: TValue);
