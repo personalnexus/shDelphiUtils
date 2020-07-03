@@ -29,6 +29,7 @@ requires
   vcl;
 
 contains
+  Queues in 'Collections\Queues.pas',
   Sets in 'Collections\Sets.pas',
   Tries in 'Collections\Tries.pas',
   CollectionInterfaces in 'Collections\CollectionInterfaces.pas',

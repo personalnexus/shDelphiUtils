@@ -1,0 +1,48 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{664BC8E5-3109-4C23-860B-7D78E2B7BDD4}</ProjectGuid>
+		</PropertyGroup>
+		<ItemGroup>
+			<Projects Include="shDelphiUtils.dproj">
+				<Dependencies/>
+			</Projects>
+			<Projects Include="shDelphiUtilsTest\shDelphiUtilsTest.dproj">
+				<Dependencies/>
+			</Projects>
+		</ItemGroup>
+		<ProjectExtensions>
+			<Borland.Personality>Default.Personality.12</Borland.Personality>
+			<Borland.ProjectType/>
+			<BorlandProject>
+				<Default.Personality/>
+			</BorlandProject>
+		</ProjectExtensions>
+		<Target Name="shDelphiUtils">
+			<MSBuild Projects="shDelphiUtils.dproj"/>
+		</Target>
+		<Target Name="shDelphiUtils:Clean">
+			<MSBuild Projects="shDelphiUtils.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="shDelphiUtils:Make">
+			<MSBuild Projects="shDelphiUtils.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="shDelphiUtilsTest">
+			<MSBuild Projects="shDelphiUtilsTest\shDelphiUtilsTest.dproj"/>
+		</Target>
+		<Target Name="shDelphiUtilsTest:Clean">
+			<MSBuild Projects="shDelphiUtilsTest\shDelphiUtilsTest.dproj" Targets="Clean"/>
+		</Target>
+		<Target Name="shDelphiUtilsTest:Make">
+			<MSBuild Projects="shDelphiUtilsTest\shDelphiUtilsTest.dproj" Targets="Make"/>
+		</Target>
+		<Target Name="Build">
+			<CallTarget Targets="shDelphiUtils;shDelphiUtilsTest"/>
+		</Target>
+		<Target Name="Clean">
+			<CallTarget Targets="shDelphiUtils:Clean;shDelphiUtilsTest:Clean"/>
+		</Target>
+		<Target Name="Make">
+			<CallTarget Targets="shDelphiUtils:Make;shDelphiUtilsTest:Make"/>
+		</Target>
+		<Import Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')" Project="$(BDS)\Bin\CodeGear.Group.Targets"/>
+	</Project>
