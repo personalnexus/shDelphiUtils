@@ -50,6 +50,8 @@
 			<DelphiCompile Include="shDelphiUtilsTest.dpr">
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
+			<DCCReference Include="QueuesTest.pas"/>
+			<DCCReference Include="SetsTest.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

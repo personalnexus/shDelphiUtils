@@ -7,12 +7,14 @@ uses
 
 type
   TConcurrentQueueItem<TValue> = class
+  private
     FValue: TValue;
     FNext:  TConcurrentQueueItem<TValue>;
 
     constructor Create(const AValue: TValue);
   end;
 
+  ///<summary>Queue for use with multiple reader- and writer-threads without locking.</summary>
   TConcurrentQueue<TValue> = class(TInterfacedObject, IQueue<TValue>)
   private
     FHead:  TConcurrentQueueItem<TValue>;

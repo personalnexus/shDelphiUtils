@@ -3,6 +3,16 @@ unit CollectionInterfaces;
 interface
 
 type
+  IEnumerator<T> = interface(IInterface)
+    function GetCurrent: T;
+    function MoveNext: Boolean;
+    property Current: T read GetCurrent;
+  end;
+
+  IEnumerable<T> = interface(IInterface)
+    function GetEnumerator(): IEnumerator<T>;
+  end;
+
   IQueue<T> = interface(IInterface)
     function GetCount: Integer;
 

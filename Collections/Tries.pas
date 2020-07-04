@@ -6,6 +6,7 @@ unit Tries;
 interface
 
 uses
+  Generics.Collections,
   CollectionInterfaces,
   SysUtils;
 
@@ -32,22 +33,22 @@ type
 
     FCount: Integer;
 
-    function GetNode(const AKey: AnsiString;
-                     ACreateIfMissing: Boolean): Pointer;
-    procedure Resize(ANewSize: Integer);
-    procedure SetValue(const AKey: AnsiString;
-                       const AValue: TValue;
-                       ARaiseIfKeyExists: Boolean);
+    function GetNode(const Key: AnsiString;
+                     CreateIfMissing: Boolean): Pointer;
+    procedure Resize(NewSize: Integer);
+    procedure SetValue(const Key: AnsiString;
+                       const Value: TValue;
+                       RaiseIfKeyExists: Boolean);
 
   public
-    constructor Create(const APossibleCharacters: ISet<AnsiChar>;
-                       AInitialCapacity: Integer;
-                       ACapacityIncrement: Integer);
+    constructor Create(const PossibleCharacters: ISet<AnsiChar>;
+                       InitialCapacity: Integer;
+                       CapacityIncrement: Integer);
 
-    procedure Add(const AKey: AnsiString; AValue: TValue);
-    function ContainsKey(const AKey: AnsiString): Boolean;
-    function Remove(const AKey: AnsiString): Boolean;
-    function TryGetValue(const AKey: AnsiString; out AValue: TValue): Boolean;
+    procedure Add(const Key: AnsiString; Value: TValue);
+    function ContainsKey(const Key: AnsiString): Boolean;
+    function Remove(const Key: AnsiString): Boolean;
+    function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 
     property Count: Integer read FCount;
   end;
@@ -63,15 +64,16 @@ type
     FMaxKeyLengthForTrie: Integer;
     FCount:               Integer;
   public
-    constructor Create(const APossibleCharacters: ISet<AnsiChar>;
-                       AInitialCapacity: Integer;
-                       ACapacityIncrement: Integer;
-                       AMaxKeyLengthForTrie: Integer);
+    constructor Create(const PossibleCharacters: ISet<AnsiChar>;
+                       InitialCapacity: Integer;
+                       CapacityIncrement: Integer;
+                       MaxKeyLengthForTrie: Integer);
+    //TODO: destructor Destroy; override;
 
-    procedure Add(const AKey: AnsiString; AValue: TValue);
-    function ContainsKey(const AKey: AnsiString): Boolean;
-    function Remove(const AKey: AnsiString): Boolean;
-    function TryGetValue(const AKey: AnsiString; out AValue: TValue): Boolean;
+    procedure Add(const Key: AnsiString; Value: TValue);
+    //TODO: function ContainsKey(const Key: AnsiString): Boolean;
+    //TODO: function Remove(const Key: AnsiString): Boolean;
+    //TODO: function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 
     property Count: Integer read FCount;
   end;
@@ -80,52 +82,52 @@ implementation
 
 // TTrie<TValue>
 
-constructor TTrie<TValue>.Create(const APossibleCharacters: ISet<AnsiChar>;
-                                 AInitialCapacity: Integer;
-                                 ACapacityIncrement: Integer);
+constructor TTrie<TValue>.Create(const PossibleCharacters: ISet<AnsiChar>;
+                                 InitialCapacity: Integer;
+                                 CapacityIncrement: Integer);
 var
-  index: Integer;
-  character: AnsiChar;
-  characterCode: Integer;
+  Index: Integer;
+  Character: AnsiChar;
+  CharacterCode: Integer;
 begin
-  index := 0;
-  for character in APossibleCharacters do begin
-    characterCode := Ord(character);
-    if (characterCode >= Length(FKeyIndexByCharacterCode)) then begin
-      SetLength(FKeyIndexByCharacterCode, characterCode + 1);
+  Index := 0;
+  for Character in PossibleCharacters do begin
+    CharacterCode := Ord(Character);
+    if (CharacterCode >= Length(FKeyIndexByCharacterCode)) then begin
+      SetLength(FKeyIndexByCharacterCode, CharacterCode + 1);
     end;
-    FKeyIndexByCharacterCode[characterCode] := index;
-    Inc(index);
+    FKeyIndexByCharacterCode[CharacterCode] := Index;
+    Inc(Index);
   end;
-  FCapacityIncrement := ACapacityIncrement;
-  FPossibleCharacterCount := APossibleCharacters.Count;
-  Resize(AInitialCapacity);
+  FCapacityIncrement := CapacityIncrement;
+  FPossibleCharacterCount := PossibleCharacters.Count;
+  Resize(InitialCapacity);
 end;
 
 // TTrie<TValue> - Helper methods
 
-function TTrie<TValue>.GetNode(const AKey: AnsiString; ACreateIfMissing: Boolean): Pointer;
+function TTrie<TValue>.GetNode(const Key: AnsiString; CreateIfMissing: Boolean): Pointer;
 var
-  nodeIndex: Integer;
-  character: AnsiChar;
-  characterCode: Integer;
-  indexIndex: Integer;
+  NodeIndex: Integer;
+  Character: AnsiChar;
+  CharacterCode: Integer;
+  IndexIndex: Integer;
 begin
   nodeIndex := 0;
-  for character in AKey do begin
+  for Character in Key do begin
     characterCode := Ord(character);
     // Step 1: get the index of where in the indexes array the index into nodes is found
     indexIndex := (nodeIndex * FPossibleCharacterCount) + FKeyIndexByCharacterCode[characterCode];
     // Step 2: get the index of the node in FNodes
     nodeIndex := FNodeIndexes[indexIndex];
     if (nodeIndex = 0) then begin
-      if (ACreateIfMissing) then begin
+      if (CreateIfMissing) then begin
         Inc(FLastUsedNodeIndex);
         if (FLastUsedNodeIndex = Length(FNodes)) then begin
           Resize(Length(FNodes) + FCapacityIncrement);
         end;
         FNodeIndexes[indexIndex] := FLastUsedNodeIndex;
-        nodeIndex := FLastUsedNodeIndex;
+        NodeIndex := FLastUsedNodeIndex;
       end else begin
         Break;
       end;
@@ -134,56 +136,56 @@ begin
   Result := @FNodes[nodeIndex];
 end;
 
-procedure TTrie<TValue>.Resize(ANewSize: Integer);
+procedure TTrie<TValue>.Resize(NewSize: Integer);
 var
-  oldSize: Integer;
+  OldSize: Integer;
 begin
-  oldSize := Length(FNodes);
-  SetLength(FNodes, ANewSize);
-  FillChar(FNodes[oldSize], ANewSize - oldSize, 0);
+  OldSize := Length(FNodes);
+  SetLength(FNodes, NewSize);
+  FillChar(FNodes[oldSize], NewSize - oldSize, 0);
 
-  ANewSize := ANewSize * FPossibleCharacterCount;
-  oldSize := Length(FNodeIndexes);
-  SetLength(FNodeIndexes, ANewSize);
-  FillChar(FNodeIndexes[oldSize], ANewSize - oldSize, 0);
+  NewSize := NewSize * FPossibleCharacterCount;
+  OldSize := Length(FNodeIndexes);
+  SetLength(FNodeIndexes, NewSize);
+  FillChar(FNodeIndexes[oldSize], NewSize - OldSize, 0);
 end;
 
-procedure TTrie<TValue>.SetValue(const AKey: AnsiString;
-                                 const AValue: TValue;
-                                 ARaiseIfKeyExists: Boolean);
+procedure TTrie<TValue>.SetValue(const Key: AnsiString;
+                                 const Value: TValue;
+                                 RaiseIfKeyExists: Boolean);
 var
   node: Pointer;
 begin
-  node := GetNode(AKey, True);
+  node := GetNode(Key, True);
   if (not TTrieNode<TValue>(node^).HasValue) then begin
     Inc(FCount);
-  end else if (ARaiseIfKeyExists) then begin
-    raise EArgumentException.CreateFmt('Key %s already exists', [AKey]);
+  end else if (RaiseIfKeyExists) then begin
+    raise EArgumentException.CreateFmt('Key %s already exists', [Key]);
   end;
-  TTrieNode<TValue>(node^).Value := AValue;
+  TTrieNode<TValue>(node^).Value := Value;
   TTrieNode<TValue>(node^).HasValue := True;
 end;
 
 // TTrie<TValue> - Functionality
 
-procedure TTrie<TValue>.Add(const AKey: AnsiString; AValue: TValue);
+procedure TTrie<TValue>.Add(const Key: AnsiString; Value: TValue);
 begin
-  SetValue(Akey, AValue, True);
+  SetValue(Key, Value, True);
 end;
 
-function TTrie<TValue>.ContainsKey(const AKey: AnsiString): Boolean;
+function TTrie<TValue>.ContainsKey(const Key: AnsiString): Boolean;
 var
-  node: Pointer;
+  Node: Pointer;
 begin
-  node := GetNode(AKey, False);
+  Node := GetNode(Key, False);
   Result := TTrieNode<TValue>(node^).HasValue;
 end;
 
-function TTrie<TValue>.Remove(const AKey: AnsiString): Boolean;
+function TTrie<TValue>.Remove(const Key: AnsiString): Boolean;
 var
-  node: Pointer;
+  Node: Pointer;
 begin
-  node := GetNode(AKey, False);
+  Node := GetNode(Key, False);
   Result := TTrieNode<TValue>(node^).HasValue;
   if (Result) then begin
     Dec(FCount);
@@ -191,44 +193,51 @@ begin
   end;
 end;
 
-function TTrie<TValue>.TryGetValue(const AKey: AnsiString; out AValue: TValue): Boolean;
+function TTrie<TValue>.TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 var
   node: Pointer;
 begin
-  node := GetNode(AKey, False);
+  node := GetNode(Key, False);
   Result := TTrieNode<TValue>(node^).HasValue;
   if (Result) then begin
-    AValue := TTrieNode<TValue>(node^).Value;
+    Value := TTrieNode<TValue>(node^).Value;
   end;
 end;
 
 // TTrieDictionary<TValue>
 
-constructor TTrieDictionary<TValue>.Create(const APossibleCharacters: ISet<AnsiChar>;
-                                           AInitialCapacity: Integer;
-                                           ACapacityIncrement: Integer;
-                                           AMaxKeyLengthForTrie: Integer);
+constructor TTrieDictionary<TValue>.Create(const PossibleCharacters: ISet<AnsiChar>;
+                                           InitialCapacity: Integer;
+                                           CapacityIncrement: Integer;
+                                           MaxKeyLengthForTrie: Integer);
 begin
   inherited Create;
-  FTrie := TTrie<TValue>.Create(APossibleCharacters,
-                                Trunc(AInitialCapacity / 2),
-                                ACapacityIncrement);
-  FDictionary := TDictionary<AnsiString, TValue>.Create(AInitialCapacity / 2);
-  FMaxKeyLengthForTrie := AMaxKeyLengthForTrie;
+  FTrie := TTrie<TValue>.Create(PossibleCharacters,
+                                Trunc(InitialCapacity / 2),
+                                CapacityIncrement);
+  FDictionary := TDictionary<AnsiString, TValue>.Create(InitialCapacity div 2);
+  FMaxKeyLengthForTrie := MaxKeyLengthForTrie;
 end;
 
-procedure TTrieDictionary<TValue>.Add(const AKey: AnsiString; AValue: TValue);
+procedure TTrieDictionary<TValue>.Add(const Key: AnsiString; Value: TValue);
 var
   KeyLength: Integer;
 begin
-  KeyLength := Length(AKey);
+  KeyLength := Length(Key);
   if (KeyLength = 1) then begin
-    FArray[AKey[1]] := AValue;
+    with FArray[Key[1]] do begin
+      Value := Value;
+      if (HasValue) then begin
+        raise EArgumentException.CreateFmt('Key %s already exists', [Key]);
+      end;
+      HasValue := True;
+    end;
   end else if (KeyLength <= FMaxKeyLengthForTrie) then begin
-    FTrie.Add(AKey, AValue);
+    FTrie.Add(Key, Value);
   end else begin
-    FDictionary.Add(AKey, AValue);
+    FDictionary.Add(Key, Value);
   end;
 end;
+
 
 end.
