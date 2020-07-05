@@ -10,9 +10,9 @@ type
 
   TVolumeMonitor = class;
 
-  TVolumeMonitorTargetViolationEvent = procedure(Sender: TVolumeMonitor; AVolumePercentage: TPercentage; var SetToTargetVolume: Boolean);
+  TVolumeMonitorTargetViolationEvent = procedure(Sender: TVolumeMonitor; AVolumePercentage: TPercentage; var SetToTargetVolume: Boolean) of object;
 
-  TVolumeMonitorErrorEvent = procedure(Sender: TVolumeMonitor; const ErrorMessage: string);
+  TVolumeMonitorErrorEvent = procedure(Sender: TVolumeMonitor; const ErrorMessage: string) of object;
 
   ///<summary>Monitors the current volume against a given target volume and reports and/or adjusts the current volume to match the target</summary>
   TVolumeMonitor = class(TObject)
