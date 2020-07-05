@@ -21,26 +21,14 @@ type
     property Current: T read GetCurrent;
   end;
 
-  TKeyNotifyEventHandler<TKey, TValue> = class(TObject)
-  private
-    FDictionary:    TDictionary<TKey, TValue>;
-    FOldHandler:    TCollectionNotifyEvent<TKey>;
-    FKeyWasRemoved: Boolean;
-
-    procedure HandleKeyNotification(Sender: TObject; const Item: TKey; Action: TCollectionNotification);
-
-  public
-    constructor Create(Dictionary: TDictionary<TKey, TValue>);
-    destructor Destroy; override;
-
-    property KeyWasRemoved: Boolean read FKeyWasRemoved;
-  end;
-
   ///<summary>Basic set implementation based on TDictionary.</summary>
   TSet<T> = class(TInterfacedObject, ISet<T>)
   private
-    FItems: TDictionary<T, Integer>;
+    FItems:         TDictionary<T, Integer>;
+    FKeyWasRemoved: Boolean;
     function GetCount: Integer;
+
+    procedure HandleKeyNotification(Sender: TObject; const Key: T; Action: TCollectionNotification);
 
   public
     constructor Create;
@@ -85,34 +73,13 @@ begin
   Result := FEnumerator.MoveNext;
 end;
 
-// TKeyNotifyEventHandler<TKey, TValue>
-
-constructor TKeyNotifyEventHandler<TKey, TValue>.Create(Dictionary: TDictionary<TKey, TValue>);
-begin
-  inherited Create;
-  FDictionary := Dictionary;
-  FOldHandler := FDictionary.OnKeyNotify;
-  FDictionary.OnKeyNotify := HandleKeyNotification;
-end;
-
-destructor TKeyNotifyEventHandler<TKey, TValue>.Destroy;
-begin
-  //TODO: check if (@FDictionary.OnKeyNotify = @Self.HandleKeyNotification)
-  FDictionary.OnKeyNotify := FOldHandler;
-  inherited Destroy;
-end;
-
-procedure TKeyNotifyEventHandler<TKey, TValue>.HandleKeyNotification(Sender: TObject; const Item: TKey; Action: TCollectionNotification);
-begin
-  FKeyWasRemoved := True;
-end;
-
 // TSet<T>
 
 constructor TSet<T>.Create;
 begin
   inherited Create;
   FItems := TDictionary<T, Integer>.Create;
+  FItems.OnKeyNotify := HandleKeyNotification;
 end;
 
 destructor TSet<T>.Destroy;
@@ -132,20 +99,15 @@ begin
 end;
 
 function TSet<T>.Remove(const Value: T): Boolean;
-var
-  Handler: TKeyNotifyEventHandler<T, Integer>;
 begin
-  //
-  // TDictionary.Remove does not return whether the key was actually removed,
-  // so we hook the OnKeyNotify event
-  //
-  Handler := TKeyNotifyEventHandler<T, Integer>.Create(FItems);
-  try
-    FItems.Remove(Value);
-    Result := Handler.KeyWasRemoved;
-  finally
-    Handler.Free;
-  end;
+  FKeyWasRemoved := False;
+  FItems.Remove(Value);
+  Result := FKeyWasRemoved;
+end;
+
+procedure TSet<T>.HandleKeyNotification(Sender: TObject; const Key: T; Action: TCollectionNotification);
+begin
+  FKeyWasRemoved := True;
 end;
 
 function TSet<T>.GetCount: Integer;
