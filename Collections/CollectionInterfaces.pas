@@ -13,6 +13,17 @@ type
     function GetEnumerator(): IEnumerator<T>;
   end;
 
+  IDictionary<TKey, TValue> = interface(IInterface)
+    function GetCount: Integer;
+
+    procedure Add(const Key: TKey; Value: TValue);
+    function ContainsKey(const Key: TKey): Boolean;
+    function Remove(const Key: TKey): Boolean;
+    function TryGetValue(const Key: TKey; out Value: TValue): Boolean;
+
+    property Count: Integer read GetCount;
+  end;
+
   IQueue<T> = interface(IInterface)
     function GetCount: Integer;
 

@@ -18,7 +18,7 @@ type
 
   ///<summary>Experimental Trie implementation with support for a reduced set of
   /// possible key elements to minimize space requirements</summary>
-  TTrie<TValue> = class(TObject)
+  TTrie<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
   private
     // Key lookup
     FKeyIndexByCharacterCode: array of Integer;
@@ -33,6 +33,7 @@ type
 
     FCount: Integer;
 
+    function GetCount: Integer;
     function GetNode(const Key: AnsiString;
                      CreateIfMissing: Boolean): Pointer;
     procedure Resize(NewSize: Integer);
@@ -53,27 +54,34 @@ type
     property Count: Integer read FCount;
   end;
 
-  ///<summary>Combines an array for single character keys with a Trie for short
-  /// keys and finally a Dictionary for long keys</summary>
-  TTrieDictionary<TValue> = class(TObject)
+  ///<summary>Experimental IDictionary implementation that combines an array for
+  /// single character keys with a TTrie for short keys and finally a TDictionary
+  /// for long keys</summary>
+  TTrieDictionary<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
   private
     FArray: array[AnsiChar] of TTrieNode<TValue>; // for single character keys
-    FTrie: TTrie<TValue>;                         // for short keys
+    FTrie: IDictionary<AnsiString, TValue>;       // for short keys
     FDictionary: TDictionary<AnsiString, TValue>; // for long keys
 
     FMaxKeyLengthForTrie: Integer;
-    FCount:               Integer;
+    FCount: Integer;
+
+    FKeyWasRemovedFromDictionary: Boolean;
+    procedure HandleKeyNotification(Sender: TObject; const Key: AnsiString; Action: TCollectionNotification);
+
+    function GetCount: Integer;
+
   public
     constructor Create(const PossibleCharacters: ISet<AnsiChar>;
                        InitialCapacity: Integer;
                        CapacityIncrement: Integer;
                        MaxKeyLengthForTrie: Integer);
-    //TODO: destructor Destroy; override;
+    destructor Destroy; override;
 
     procedure Add(const Key: AnsiString; Value: TValue);
-    //TODO: function ContainsKey(const Key: AnsiString): Boolean;
-    //TODO: function Remove(const Key: AnsiString): Boolean;
-    //TODO: function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
+    function ContainsKey(const Key: AnsiString): Boolean;
+    function Remove(const Key: AnsiString): Boolean;
+    function TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
 
     property Count: Integer read FCount;
   end;
@@ -105,6 +113,11 @@ begin
 end;
 
 // TTrie<TValue> - Helper methods
+
+function TTrie<TValue>.GetCount: Integer;
+begin
+  Result := FCount;
+end;
 
 function TTrie<TValue>.GetNode(const Key: AnsiString; CreateIfMissing: Boolean): Pointer;
 var
@@ -166,7 +179,7 @@ begin
   TTrieNode<TValue>(node^).HasValue := True;
 end;
 
-// TTrie<TValue> - Functionality
+// TTrie<TValue> - IDictionary
 
 procedure TTrie<TValue>.Add(const Key: AnsiString; Value: TValue);
 begin
@@ -195,7 +208,7 @@ end;
 
 function TTrie<TValue>.TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 var
-  node: Pointer;
+  Node: Pointer;
 begin
   node := GetNode(Key, False);
   Result := TTrieNode<TValue>(node^).HasValue;
@@ -216,8 +229,29 @@ begin
                                 Trunc(InitialCapacity / 2),
                                 CapacityIncrement);
   FDictionary := TDictionary<AnsiString, TValue>.Create(InitialCapacity div 2);
+  FDictionary.OnKeyNotify := HandleKeyNotification;
   FMaxKeyLengthForTrie := MaxKeyLengthForTrie;
 end;
+
+destructor TTrieDictionary<TValue>.Destroy;
+begin
+  FTrie := nil;
+  FreeAndNil(FDictionary);
+end;
+
+// TTrieDictionary<TValue> - Helper methods
+
+procedure TTrieDictionary<TValue>.HandleKeyNotification(Sender: TObject; const Key: AnsiString; Action: TCollectionNotification);
+begin
+  FKeyWasRemovedFromDictionary := Action = cnRemoved;
+end;
+
+function TTrieDictionary<TValue>.GetCount: Integer;
+begin
+  Result := FCount;
+end;
+
+// TTrieDictionary<TValue> - IDictionary
 
 procedure TTrieDictionary<TValue>.Add(const Key: AnsiString; Value: TValue);
 var
@@ -236,6 +270,60 @@ begin
     FTrie.Add(Key, Value);
   end else begin
     FDictionary.Add(Key, Value);
+  end;
+  Inc(FCount);
+end;
+
+function TTrieDictionary<TValue>.ContainsKey(const Key: AnsiString): Boolean;
+var
+  KeyLength: Integer;
+begin
+  KeyLength := Length(Key);
+  if (KeyLength = 1) then begin
+    Result := FArray[Key[1]].HasValue;
+  end else if (KeyLength <= FMaxKeyLengthForTrie) then begin
+    Result := FTrie.ContainsKey(Key);
+  end else begin
+    Result := FDictionary.ContainsKey(Key);
+  end;
+end;
+
+function TTrieDictionary<TValue>.Remove(const Key: AnsiString): Boolean;
+var
+  KeyLength: Integer;
+begin
+  KeyLength := Length(Key);
+  if (KeyLength = 1) then begin
+    with FArray[Key[1]] do begin
+      Result := HasValue;
+      HasValue := False;
+    end;
+  end else if (KeyLength <= FMaxKeyLengthForTrie) then begin
+    Result := FTrie.Remove(Key);
+  end else begin
+    FKeyWasRemovedFromDictionary := False;
+    FDictionary.Remove(Key);
+    Result := FKeyWasRemovedFromDictionary;
+  end;
+  if (Result) then begin
+    Dec(FCount);
+  end;
+end;
+
+function TTrieDictionary<TValue>.TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
+var
+  KeyLength: Integer;
+begin
+  KeyLength := Length(Key);
+  if (KeyLength = 1) then begin
+    with FArray[Key[1]] do begin
+      Result := HasValue;
+      ResultValue := Value;
+    end;
+  end else if (KeyLength <= FMaxKeyLengthForTrie) then begin
+    Result := FTrie.TryGetValue(Key, ResultValue);
+  end else begin
+    Result := FDictionary.TryGetValue(Key, ResultValue);
   end;
 end;
 
