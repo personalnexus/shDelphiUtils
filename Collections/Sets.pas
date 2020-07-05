@@ -107,7 +107,7 @@ end;
 
 procedure TSet<T>.HandleKeyNotification(Sender: TObject; const Key: T; Action: TCollectionNotification);
 begin
-  FKeyWasRemoved := True;
+  FKeyWasRemoved := Action = cnRemoved;
 end;
 
 function TSet<T>.GetCount: Integer;
