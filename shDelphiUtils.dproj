@@ -1,4 +1,4 @@
-	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 		<PropertyGroup>
 			<ProjectGuid>{54079543-1309-4193-94D6-188A1CD9BEA3}</ProjectGuid>
 			<MainSource>shDelphiUtils.dpk</MainSource>
@@ -63,6 +63,7 @@
 			<DCCReference Include="Collections\CollectionInterfaces.pas"/>
 			<DCCReference Include="Collections\KeyValueLists.pas"/>
 			<DCCReference Include="Media\Sound.pas"/>
+			<DCCReference Include="Common\MemoryManagers.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

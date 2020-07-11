@@ -11,7 +11,8 @@ uses
   Classes,
   Windows,
   CollectionInterfaces,
-  Queues;
+  Queues,
+  MemoryManagers;
 
 var
   Queue: IQueue<Integer>;
@@ -125,15 +126,22 @@ begin
 end;
 
 procedure ExecuteWithQueue(QueueProc: TProc; const ProcName: string);
+var
+  MemoryManager: TRecordBlockMemoryManager;
 begin
   CompletedThreads := 0;
-  Queue := TConcurrentQueue<Integer>.Create;
+  MemoryManager := TRecordBlockMemoryManager.Create(SizeOf(TConcurrentQueueItem<Integer>), MESSAGE_COUNT * THREAD_COUNT + 1);
   try
-    QueueProc();
+    Queue := TConcurrentQueue<Integer>.CreateWithMemoryManager(MemoryManager.Allocate, MemoryManager.Deallocate);
+    try
+      QueueProc();
+    finally
+      Queue := nil;
+    end;
+    Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed ' + ProcName + ' successfully');
   finally
-    Queue := nil;
+    MemoryManager.Free;
   end;
-  Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed ' + ProcName + ' successfully');
 end;
 
 procedure Run;

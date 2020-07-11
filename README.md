@@ -13,6 +13,10 @@ Unlike my C# utilities, which are very representative of how I write production 
 * __TTrie__: Experimental Trie implementation with support for a reduced set of possible key elements to minimize space requirements.
 * __TTrieDictionary__: Experimental IDictionary implementation that combines an array for single character keys with a TTrie for short keys and finally a TDictionary for long keys
 
+## Common
+
+* __TRecordBlockMemoryManager__: Experimental memory manager that allocates each record from a large block of memory starting over with a new block when the initial block runs out
+
 ## Media
 
 * __TVolumeMonitor__: Monitors the current volume against a given target volume and reports and/or adjusts the current volume to match the target.

@@ -34,6 +34,7 @@ contains
   Tries in 'Collections\Tries.pas',
   CollectionInterfaces in 'Collections\CollectionInterfaces.pas',
   KeyValueLists in 'Collections\KeyValueLists.pas',
-  Sound in 'Media\Sound.pas';
+  Sound in 'Media\Sound.pas',
+  MemoryManagers in 'Common\MemoryManagers.pas';
 
 end.
