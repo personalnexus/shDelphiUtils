@@ -27,7 +27,6 @@ var
   Rec:     PRecord;
   Records: array[0..100000] of PRecord;
   Block:   IRecordBlock;
-  BlockPointer: Pointer;
 begin
   MM := TRecordBlockMemoryManagerEx.Create(SizeOf(TRecord), 24943);
   try

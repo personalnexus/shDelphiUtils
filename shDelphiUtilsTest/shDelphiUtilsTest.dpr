@@ -5,11 +5,13 @@ program shDelphiUtilsTest;
 uses
   QueuesTest in 'QueuesTest.pas',
   SetsTest in 'SetsTest.pas',
-  CommonTest in 'CommonTest.pas';
+  CommonTest in 'CommonTest.pas',
+  KeyValueListsTest in 'KeyValueListsTest.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := True;
 
+  KeyValueListsTest.Run;
   CommonTest.Run;
   QueuesTest.Run;
   SetsTest.Run;
