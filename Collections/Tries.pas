@@ -51,6 +51,9 @@ type
     function Remove(const Key: AnsiString): Boolean;
     function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 
+    function TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): Boolean; inline;
+    function TryGetValueByNodeIndex(NodeIndex: Integer; out Value: TValue): Boolean; inline;
+
     property Count: Integer read FCount;
   end;
 
@@ -123,17 +126,11 @@ function TTrie<TValue>.GetNode(const Key: AnsiString; CreateIfMissing: Boolean):
 var
   NodeIndex: Integer;
   Character: AnsiChar;
-  CharacterCode: Integer;
   IndexIndex: Integer;
 begin
-  nodeIndex := 0;
+  NodeIndex := 0;
   for Character in Key do begin
-    characterCode := Ord(character);
-    // Step 1: get the index of where in the indexes array the index into nodes is found
-    indexIndex := (nodeIndex * FPossibleCharacterCount) + FKeyIndexByCharacterCode[characterCode];
-    // Step 2: get the index of the node in FNodes
-    nodeIndex := FNodeIndexes[indexIndex];
-    if (nodeIndex = 0) then begin
+    if (not TryGetNodeIndexIncremental(Character, IndexIndex, NodeIndex)) then begin
       if (CreateIfMissing) then begin
         Inc(FLastUsedNodeIndex);
         if (FLastUsedNodeIndex = Length(FNodes)) then begin
@@ -147,6 +144,24 @@ begin
     end;
   end;
   Result := @FNodes[nodeIndex];
+end;
+
+function TTrie<TValue>.TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): Boolean;
+var
+  CharacterCode: Integer;
+begin
+  CharacterCode := Ord(Character);
+  // Step 1: get the index of where in the indexes array the index into nodes is found
+  IndexIndex := (NodeIndex * FPossibleCharacterCount) + FKeyIndexByCharacterCode[characterCode];
+  // Step 2: get the index of the node in FNodes
+  NodeIndex := FNodeIndexes[indexIndex];
+  Result := NodeIndex <> 0;
+end;
+
+function TTrie<TValue>.TryGetValueByNodeIndex(NodeIndex: Integer; out Value: TValue): Boolean;
+begin
+  Result := FNodes[NodeIndex].HasValue;
+  Value  := FNodes[NodeIndex].Value;
 end;
 
 procedure TTrie<TValue>.Resize(NewSize: Integer);

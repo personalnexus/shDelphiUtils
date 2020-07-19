@@ -43,16 +43,18 @@ type
     procedure Sort;
   end;
 
+const
+  LineFeed          = AnsiChar(#10);
+  CarriageReturn    = AnsiChar(#13);
+  KeyValueSeparator = AnsiChar('=');
+
+function IsLineFeedOrCarriageReturn(Character: AnsiChar): Boolean; inline;
+
 
 implementation
 
 uses
   SysUtils;
-
-const
-  LineFeed          = AnsiChar(#10);
-  CarriageReturn    = AnsiChar(#13);
-  KeyValueSeparator = AnsiChar('=');
 
 function IsLineFeedOrCarriageReturn(Character: AnsiChar): Boolean; inline;
 begin

@@ -64,6 +64,7 @@
 			<DCCReference Include="Collections\KeyValueLists.pas"/>
 			<DCCReference Include="Media\Sound.pas"/>
 			<DCCReference Include="Common\MemoryManagers.pas"/>
+			<DCCReference Include="Collections\KeyValueScanner.pas"/>
 			<BuildConfiguration Include="Release">
 				<Key>Cfg_2</Key>
 				<CfgParent>Base</CfgParent>

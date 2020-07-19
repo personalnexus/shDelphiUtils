@@ -8,7 +8,53 @@ implementation
 
 uses
   KeyValueLists,
+  KeyValueScanner,
   SysUtils;
+
+const
+  BidIndex = 0;
+  AskIndex = 1;
+  LastIndex = 2;
+
+procedure TestStringKeyValueScanner;
+var
+  Scanner: TStringKeyValueScanner;
+  Keys: TAnsiStrings;
+  Value: AnsiString;
+begin
+  SetLength(Keys, 3);
+  Keys[BidIndex] := 'Bid';
+  Keys[AskIndex] := 'Ask';
+  Keys[LastIndex] := 'Last';
+
+  Scanner := TStringKeyValueScanner.Create(Keys);
+  try
+    Assert(Scanner.SetText( 'Bid=100'#13'Close=85'#10'Last=97'#10#10'Last=98'#13#13'Ask=101'#13#10'Open=92') = 3);
+    Assert(Scanner.TryGetValue(BidIndex, Value), 'Did not get Bid');
+    Assert(Value = '100', 'Expected Bid=101. Actual: ' + string(Value));
+    Assert(Scanner.TryGetValue(AskIndex, Value), 'Did not get Ask');
+    Assert(Value = '101', 'Expected Ask=101. Actual: ' + string(Value));
+    Assert(Scanner.TryGetValue(LastIndex, Value), 'Did not get Last');
+    Assert(Value = '97', 'Expected Last=97. Actual: ' + string(Value));
+
+    Assert(Scanner.SetText('Bid=1'#13'Ask=') = 2);
+    Assert(Scanner.TryGetValue(BidIndex, Value), 'Did not get Bid');
+    Assert(Value = '1', 'Expected Bid=1. Actual: ' + string(Value));
+    Assert(Scanner.TryGetValue(AskIndex, Value), 'Did not get Ask');
+    Assert(Value = '', 'Expected Ask=(empty). Actual: ' + string(Value));
+    Assert(not Scanner.TryGetValue(LastIndex, Value), 'Should not have gotten Last');
+
+    Assert(Scanner.SetText('Bid') = 1);
+    Assert(Scanner.TryGetValue(BidIndex, Value), 'Did not get Bid');
+    Assert(Value = '', 'Expected Bid=(empty). Actual: ' + string(Value));
+
+    Assert(Scanner.SetText('Hallo=') = 0);
+
+  finally
+    Scanner.Free;
+  end;
+  Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed StringKeyValueScanner successfully');
+end;
 
 procedure TestStringKeyValueList;
 var
@@ -41,6 +87,7 @@ end;
 
 procedure Run;
 begin
+  TestStringKeyValueScanner;
   TestStringKeyValueList;
 end;
 
