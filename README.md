@@ -11,7 +11,7 @@ Unlike my C# utilities, which are very representative of how I write production 
 * __TConcurrentQueue__: Experimental queue for use with multiple reader- and writer-threads without locking. Uses Interlocked operations for synchronization.
 * __TSet__: Basic set implementation based on TDictionary.
 * __TStringKeyValueList__: A never-shrinking key value list parsed efficiently from a text-representation of sorted key value pairs
-* __TStringKeyValueScanner__: Parses a set of known keys from the text representation of key value pairs
+* __TStringKeyValueScanner__: Experimental parser for a set of known keys in the text representation of key value pairs
 * __TStringMap__: Based on TStringKeyValueList this class adds sorting and lookup of values by key
 * __TTrie__: Experimental Trie implementation with support for a reduced set of possible key elements to minimize space requirements.
 * __TTrieDictionary__: Experimental IDictionary implementation that combines an array for single character keys with a TTrie for short keys and finally a TDictionary for long keys

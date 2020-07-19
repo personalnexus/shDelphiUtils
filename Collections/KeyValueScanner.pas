@@ -15,7 +15,7 @@ type
 
   PStringValue = ^TStringValue;
 
-  ///<summary>Parses a set of known keys from the text representation of key value pairs</summary>
+  ///<summary>Experimental parser for a set of known keys in the text representation of key value pairs</summary>
   TStringKeyValueScanner = class(TObject)
   private
     FValuePointersByKey: TTrie<PStringValue>;
