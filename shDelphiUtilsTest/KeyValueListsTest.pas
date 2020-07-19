@@ -19,7 +19,7 @@ const
 procedure TestStringKeyValueScanner;
 var
   Scanner: TStringKeyValueScanner;
-  Keys: TAnsiStrings;
+  Keys: TAnsiStringArray;
   Value: AnsiString;
 begin
   SetLength(Keys, 3);
@@ -45,6 +45,10 @@ begin
     Assert(not Scanner.TryGetValue(LastIndex, Value), 'Should not have gotten Last');
 
     Assert(Scanner.SetText('Bid') = 1);
+    Assert(Scanner.TryGetValue(BidIndex, Value), 'Did not get Bid');
+    Assert(Value = '', 'Expected Bid=(empty). Actual: ' + string(Value));
+
+    Assert(Scanner.SetText('Bid=') = 1);
     Assert(Scanner.TryGetValue(BidIndex, Value), 'Did not get Bid');
     Assert(Value = '', 'Expected Bid=(empty). Actual: ' + string(Value));
 

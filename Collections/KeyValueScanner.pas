@@ -3,75 +3,83 @@ unit KeyValueScanner;
 interface
 
 uses
-  AnsiStrings, Tries;
+  CollectionInterfaces, Tries;
 
 type
-  TAnsiStrings = array of AnsiString;
+  TAnsiStringArray = array of AnsiString;
 
-  TStringValue = record
+  TSubstringPosition = record
     Start: Integer;
     Length: Integer;
   end;
 
-  PStringValue = ^TStringValue;
+  PSubstringPosition = ^TSubstringPosition;
 
   ///<summary>Experimental parser for a set of known keys in the text representation of key value pairs</summary>
-  TStringKeyValueScanner = class(TObject)
+  TStringKeyValueScanner = class(TInterfacedObject, IDictionary<Integer, AnsiString>)
   private
-    FValuePointersByKey: TTrie<PStringValue>;
-    FValuesByIndex: array of TStringValue;
-    FCount: Integer;
+    FValuePositionsByKey: TTrie<PSubstringPosition>;
+    FValuePositionsByIndex: array of TSubstringPosition;
+    FKeyCount: Integer;
+    FValueCountInText: Integer;
     FText: AnsiString;
 
     procedure SetValue(KeyNodeIndex, Start, Length: Integer; var ValueCount: Integer); inline;
 
+    // IDictionary
+    function GetCount: Integer; inline;
+    procedure Add(const Index: Integer; const Value: AnsiString);
+    function Remove(const Index: Integer): Boolean;
+
   public
-    constructor Create(Keys: TAnsiStrings);
+    ///<summary>Initializes the scanner with the given keys. Each key's index in
+    /// the array is the index used to retrieve the value later</summary>
+    constructor Create(Keys: TAnsiStringArray);
     destructor Destroy; override;
 
-    function SetText(const Text: AnsiString): Integer; overload;
+    function SetText(const Text: AnsiString): Integer;
 
-    function ContainsKey(Index: Integer): Boolean;
-    function GetValueDef(Index: Integer; const Default: AnsiString): AnsiString;
-    function TryGetValue(Index: Integer; out Value: AnsiString): Boolean;
+    function ContainsKey(const Index: Integer): Boolean; inline;
+    function TryGetValue(const Index: Integer; out Value: AnsiString): Boolean; inline;
+    function GetValueDef(Index: Integer; const Default: AnsiString): AnsiString; inline;
   end;
 
 
 implementation
 
 uses
-  SysUtils, Sets, CollectionInterfaces, KeyValueLists;
+  SysUtils, Sets, KeyValueLists;
 
 { TStringKeyValueScanner }
 
-constructor TStringKeyValueScanner.Create(Keys: TAnsiStrings);
+constructor TStringKeyValueScanner.Create(Keys: TAnsiStringArray);
 var
   KeyCharacter: AnsiChar;
   KeyCharacters: ISet<AnsiChar>;
   Index: Integer;
 begin
   inherited Create;
-  FCount := Length(Keys);
-  SetLength(FValuesByIndex, FCount);
+  FKeyCount := Length(Keys);
+  SetLength(FValuePositionsByIndex, FKeyCount);
 
   // Create trie with the minimum set of characters needed for all keys
   KeyCharacters := TSet<AnsiChar>.Create;
-  for Index := 0 to FCount - 1 do begin
+  for Index := 0 to FKeyCount - 1 do begin
     for KeyCharacter in Keys[Index] do begin
       KeyCharacters.Add(KeyCharacter);
     end;
   end;
 
-  FValuePointersByKey := TTrie<PStringValue>.Create(KeyCharacters, FCount, 1);
-  for Index := 0 to FCount - 1 do begin
-    FValuePointersByKey.Add(Keys[Index], @FValuesByIndex[Index])
+  FValuePositionsByKey := TTrie<PSubstringPosition>.Create(KeyCharacters, FKeyCount, 1);
+  for Index := 0 to FKeyCount - 1 do begin
+    FValuePositionsByKey.Add(Keys[Index], @FValuePositionsByIndex[Index])
   end;
 end;
 
 destructor TStringKeyValueScanner.Destroy;
 begin
-  FreeAndNil(FValuePointersByKey);
-  SetLength(FValuesByIndex, 0);
+  FreeAndNil(FValuePositionsByKey);
+  SetLength(FValuePositionsByIndex, 0);
   inherited Destroy;
 end;
 
@@ -83,14 +91,14 @@ var
   TextLength: Integer;
   PreviousKeyNodeIndex: Integer;
   KeyNodeIndex: Integer;
-  KeyIndexIndex: Integer;
+  _: Integer;
 begin
   FText := Text;
   TextLength := Length(Text);
-  // Result tracks the number of keys found (in case of duplicate keys, the first
+  // FValueCountInText tracks the number of keys found (in case of duplicate keys, the first
   // value is retained and only counted once)
-  Result := 0;
-  FillChar(FValuesByIndex[0], FCount * SizeOf(TStringValue), 0);
+  FValueCountInText := 0;
+  FillChar(FValuePositionsByIndex[0], FKeyCount * SizeOf(TSubstringPosition), 0);
 
   Index := 1;
   KeyNodeIndex := 0;
@@ -98,7 +106,7 @@ begin
   while (Index <= TextLength) do begin
     Character := Text[Index];
     PreviousKeyNodeIndex := KeyNodeIndex;
-    if (FValuePointersByKey.TryGetNodeIndexIncremental(Character, KeyIndexIndex, KeyNodeIndex)) then begin
+    if (FValuePositionsByKey.TryGetNodeIndexIncremental(Character, _, KeyNodeIndex)) then begin
       Inc(Index);
     end else if (Character = KeyValueSeparator ) then begin
       // Skip to end of key-value-pair
@@ -107,9 +115,9 @@ begin
         Inc(Index);
       until (Index > TextLength) or (IsLineFeedOrCarriageReturn(Text[Index]));
       // Save value position unless we already had that key
-      SetValue(PreviousKeyNodeIndex, Start, Index-Start, Result);
+      SetValue(PreviousKeyNodeIndex, Start, Index-Start, FValueCountInText);
       // Ignore the rest when all keys have been found
-      if (Result = FCount) then begin
+      if (FValueCountInText = FKeyCount) then begin
         Break;
       end;
       // Skip to beginning of next key
@@ -118,7 +126,7 @@ begin
         Inc(Index);
       until (Index > TextLength) or (not IsLineFeedOrCarriageReturn(Text[Index]));
     end else begin
-      SetValue(KeyNodeIndex, Index, 0, Result);
+      SetValue(KeyNodeIndex, Index, 0, FValueCountInText);
       // Skip to end of key-value-pair
       repeat
         Inc(Index);
@@ -130,27 +138,45 @@ begin
     end;
   end;
   // If the last key does not end with a key value separator, record an empty key
-  SetValue(KeyNodeIndex, Index, 0, Result);
+  SetValue(KeyNodeIndex, Index, 0, FValueCountInText);
+  Result := FValueCountInText;
 end;
 
 procedure TStringKeyValueScanner.SetValue(KeyNodeIndex, Start, Length: Integer; var ValueCount: Integer);
 var
-  ValuePointer: PStringValue;
+  ValuePosition: PSubstringPosition;
 begin
   if (KeyNodeIndex <> 0) then begin
     // Save value position unless we already had that key
-    if (FValuePointersByKey.TryGetValueByNodeIndex(KeyNodeIndex, ValuePointer) and
-        (ValuePointer.Start = 0)) then begin
+    if (FValuePositionsByKey.TryGetValueByNodeIndex(KeyNodeIndex, ValuePosition) and
+        (ValuePosition.Start = 0)) then begin
       Inc(ValueCount);
-      ValuePointer.Start := Start;
-      ValuePointer.Length := Length;
+      ValuePosition.Start := Start;
+      ValuePosition.Length := Length;
     end;
   end;
 end;
 
-function TStringKeyValueScanner.ContainsKey(Index: Integer): Boolean;
+{ TStringKeyValueScanner - IDictionary }
+
+function TStringKeyValueScanner.GetCount: Integer;
 begin
-  Result := FValuesByIndex[Index].Start <> 0;
+  Result := FValueCountInText;
+end;
+
+procedure TStringKeyValueScanner.Add(const Index: Integer; const Value: AnsiString);
+begin
+  raise ENotSupportedException.Create( 'Only SetText can be used to modify TStringKeyValueScanner.' );
+end;
+
+function TStringKeyValueScanner.Remove(const Index: Integer): Boolean;
+begin
+  raise ENotSupportedException.Create( 'Only SetText can be used to modify TStringKeyValueScanner.' );
+end;
+
+function TStringKeyValueScanner.ContainsKey(const Index: Integer): Boolean;
+begin
+  Result := FValuePositionsByIndex[Index].Start <> 0;
 end;
 
 function TStringKeyValueScanner.GetValueDef(Index: Integer; const Default: AnsiString): AnsiString;
@@ -160,14 +186,14 @@ begin
   end;
 end;
 
-function TStringKeyValueScanner.TryGetValue(Index: Integer; out Value: AnsiString): Boolean;
+function TStringKeyValueScanner.TryGetValue(const Index: Integer; out Value: AnsiString): Boolean;
 var
-  ValuePointer: PStringValue;
+  ValuePosition: PSubstringPosition;
 begin
-  ValuePointer := @FValuesByIndex[Index];
-  Result := ValuePointer.Start <> 0;
+  ValuePosition := @FValuePositionsByIndex[Index];
+  Result := ValuePosition.Start <> 0;
   if (Result) then begin
-    Value := Copy(FText, ValuePointer.Start, ValuePointer.Length);
+    Value := Copy(FText, ValuePosition.Start, ValuePosition.Length);
   end;
 end;
 

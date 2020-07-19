@@ -16,7 +16,7 @@ type
   IDictionary<TKey, TValue> = interface(IInterface)
     function GetCount: Integer;
 
-    procedure Add(const Key: TKey; Value: TValue);
+    procedure Add(const Key: TKey; const Value: TValue);
     function ContainsKey(const Key: TKey): Boolean;
     function Remove(const Key: TKey): Boolean;
     function TryGetValue(const Key: TKey; out Value: TValue): Boolean;

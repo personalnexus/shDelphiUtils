@@ -46,7 +46,7 @@ type
                        InitialCapacity: Integer;
                        CapacityIncrement: Integer);
 
-    procedure Add(const Key: AnsiString; Value: TValue);
+    procedure Add(const Key: AnsiString; const Value: TValue);
     function ContainsKey(const Key: AnsiString): Boolean;
     function Remove(const Key: AnsiString): Boolean;
     function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
@@ -81,7 +81,7 @@ type
                        MaxKeyLengthForTrie: Integer);
     destructor Destroy; override;
 
-    procedure Add(const Key: AnsiString; Value: TValue);
+    procedure Add(const Key: AnsiString; const Value: TValue);
     function ContainsKey(const Key: AnsiString): Boolean;
     function Remove(const Key: AnsiString): Boolean;
     function TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
@@ -196,7 +196,7 @@ end;
 
 // TTrie<TValue> - IDictionary
 
-procedure TTrie<TValue>.Add(const Key: AnsiString; Value: TValue);
+procedure TTrie<TValue>.Add(const Key: AnsiString; const Value: TValue);
 begin
   SetValue(Key, Value, True);
 end;
@@ -268,7 +268,7 @@ end;
 
 // TTrieDictionary<TValue> - IDictionary
 
-procedure TTrieDictionary<TValue>.Add(const Key: AnsiString; Value: TValue);
+procedure TTrieDictionary<TValue>.Add(const Key: AnsiString; const Value: TValue);
 var
   KeyLength: Integer;
 begin
