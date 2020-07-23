@@ -9,7 +9,8 @@ implementation
 uses
   KeyValueLists,
   KeyValueScanner,
-  SysUtils;
+  SysUtils,
+  Classes;
 
 const
   BidIndex = 0;
@@ -60,39 +61,81 @@ begin
   Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed StringKeyValueScanner successfully');
 end;
 
-procedure TestStringKeyValueList;
+procedure TestGrowingStringMap;
 var
-  KeyValueList: TStringKeyValueList;
+  Map: TGrowingStringMap;
 begin
-  KeyValueList := TStringKeyValueList.Create;
+  Map := TGrowingStringMap.Create;
   try
-    KeyValueList.SetSortedText('Key1=Value1'#13'Key2='#10'Key3'#13#10'Key4=Value4'#10#13#10'Key5'#13#10'=Value6=6'#10#10'Key7');
-    Assert(KeyValueList.Count = 7, 'map.Count=' + IntToStr(KeyValueList.Count));
-    Assert(KeyValueList.Keys[0] = 'Key1', 'Keys[0]=' + string(KeyValueList.Keys[0]));
-    Assert(KeyValueList.Keys[1] = 'Key2', 'Keys[1]=' + string(KeyValueList.Keys[1]));
-    Assert(KeyValueList.Keys[2] = 'Key3', 'Keys[2]=' + string(KeyValueList.Keys[2]));
-    Assert(KeyValueList.Keys[3] = 'Key4', 'Keys[3]=' + string(KeyValueList.Keys[3]));
-    Assert(KeyValueList.Keys[4] = 'Key5', 'Keys[4]=' + string(KeyValueList.Keys[4]));
-    Assert(KeyValueList.Keys[5] = '',     'Keys[5]=' + string(KeyValueList.Keys[5]));
-    Assert(KeyValueList.Keys[6] = 'Key7', 'Keys[6]=' + string(KeyValueList.Keys[6]));
+    Map.SetSortedText('Key1=Value1'#13'Key2='#10'Key3'#13#10'Key4=Value4'#10#13#10'Key5'#13#10'=Value6=6'#10#10'Key7');
+    Assert(Map.Count = 7, 'map.Count=' + IntToStr(Map.Count));
+    Assert(Map.Keys[0] = 'Key1', 'Keys[0]=' + string(Map.Keys[0]));
+    Assert(Map.Keys[1] = 'Key2', 'Keys[1]=' + string(Map.Keys[1]));
+    Assert(Map.Keys[2] = 'Key3', 'Keys[2]=' + string(Map.Keys[2]));
+    Assert(Map.Keys[3] = 'Key4', 'Keys[3]=' + string(Map.Keys[3]));
+    Assert(Map.Keys[4] = 'Key5', 'Keys[4]=' + string(Map.Keys[4]));
+    Assert(Map.Keys[5] = '',     'Keys[5]=' + string(Map.Keys[5]));
+    Assert(Map.Keys[6] = 'Key7', 'Keys[6]=' + string(Map.Keys[6]));
 
-    Assert(KeyValueList.Values[0] = 'Value1',   'Values[0]=' + string(KeyValueList.Values[0]));
-    Assert(KeyValueList.Values[1] = '',         'Values[1]=' + string(KeyValueList.Values[1]));
-    Assert(KeyValueList.Values[2] = '',         'Values[2]=' + string(KeyValueList.Values[2]));
-    Assert(KeyValueList.Values[3] = 'Value4',   'Values[3]=' + string(KeyValueList.Values[3]));
-    Assert(KeyValueList.Values[4] = '',         'Values[4]=' + string(KeyValueList.Values[4]));
-    Assert(KeyValueList.Values[5] = 'Value6=6', 'Values[5]=' + string(KeyValueList.Values[5]));
-    Assert(KeyValueList.Values[6] = '',         'Values[6]=' + string(KeyValueList.Values[6]));
+    Assert(Map.Values[0] = 'Value1',   'Values[0]=' + string(Map.Values[0]));
+    Assert(Map.Values[1] = '',         'Values[1]=' + string(Map.Values[1]));
+    Assert(Map.Values[2] = '',         'Values[2]=' + string(Map.Values[2]));
+    Assert(Map.Values[3] = 'Value4',   'Values[3]=' + string(Map.Values[3]));
+    Assert(Map.Values[4] = '',         'Values[4]=' + string(Map.Values[4]));
+    Assert(Map.Values[5] = 'Value6=6', 'Values[5]=' + string(Map.Values[5]));
+    Assert(Map.Values[6] = '',         'Values[6]=' + string(Map.Values[6]));
   finally
-    KeyValueList.Free;
+    Map.Free;
   end;
-  Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed StringKeyValueList successfully');
+  Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed GrowingStringMap successfully');
+end;
+
+procedure TestSlimStringMap;
+var
+  Index: Integer;
+  Map: TSlimStringMap;
+  Strings: TStringList;
+begin
+  Map := TSlimStringMap.Create;
+
+  try
+    for Index := 1 to 2 do begin
+      Strings := TStringList.Create;
+      try
+        Strings.Add('Key1=' + 'Value1');
+        Strings.Add('Key4=' + 'Value4' + IntToStr(Index));
+        Strings.Add('Key3');
+        Strings.Add('Key2=');
+        Strings.Add('Key5=' + 'Value5');
+        Strings.Add('Key4=' + 'Value4');
+        Map.SetStrings(Strings);
+      finally
+        Strings.Free;
+      end;
+      Assert(Map.Count = 5, 'map.Count=' + IntToStr(Map.Count));
+      Assert(Map.Keys[0] = 'Key1', 'Keys[0]=' + string(Map.Keys[0]));
+      Assert(Map.Keys[1] = 'Key2', 'Keys[1]=' + string(Map.Keys[1]));
+      Assert(Map.Keys[2] = 'Key3', 'Keys[2]=' + string(Map.Keys[2]));
+      Assert(Map.Keys[3] = 'Key4', 'Keys[3]=' + string(Map.Keys[3]));
+      Assert(Map.Keys[4] = 'Key5', 'Keys[4]=' + string(Map.Keys[4]));
+
+      Assert(Map.Values[0] = 'Value1',   'Values[0]=' + string(Map.Values[0]));
+      Assert(Map.Values[1] = '',         'Values[1]=' + string(Map.Values[1]));
+      Assert(Map.Values[2] = '',         'Values[2]=' + string(Map.Values[2]));
+      Assert(Map.Values[3] = 'Value4',   'Values[3]=' + string(Map.Values[3]));
+      Assert(Map.Values[4] = 'Value5',   'Values[4]=' + string(Map.Values[4]));
+    end;
+  finally
+    Map.Free;
+  end;
+  Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed SlimStringMap successfully');
 end;
 
 procedure Run;
 begin
   TestStringKeyValueScanner;
-  TestStringKeyValueList;
+  TestGrowingStringMap;
+  TestSlimStringMap;
 end;
 
 end.
