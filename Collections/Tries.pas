@@ -11,6 +11,8 @@ uses
   SysUtils;
 
 type
+  TTrieNodeSearch = (tnsNotFound, tnsFound, tnsInvalid);
+
   TTrieNode<T> = record
     Value: T;
     HasValue: Boolean;
@@ -21,14 +23,14 @@ type
   TTrie<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
   private
     // Key lookup
-    FKeyIndexByCharacterCode: array of Integer;
+    FKeyIndexByCharacterCode: array[AnsiChar] of Integer;
 
     // Nodes
     FNodes: array of TTrieNode<TValue>;
     FNodeIndexes: array of Integer;
     FLastUsedNodeIndex: Integer;
 
-    FPossibleCharacterCount: Integer;
+    FPossibleKeyCharacterCount: Integer;
     FCapacityIncrement: Integer;
 
     FCount: Integer;
@@ -42,7 +44,7 @@ type
                        RaiseIfKeyExists: Boolean);
 
   public
-    constructor Create(const PossibleCharacters: ISet<AnsiChar>;
+    constructor Create(const PossibleKeyCharacters: ISet<AnsiChar>;
                        InitialCapacity: Integer;
                        CapacityIncrement: Integer);
 
@@ -51,7 +53,7 @@ type
     function Remove(const Key: AnsiString): Boolean;
     function TryGetValue(const Key: AnsiString; out Value: TValue): Boolean;
 
-    function TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): Boolean; inline;
+    function TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): TTrieNodeSearch; inline;
     function TryGetValueByNodeIndex(NodeIndex: Integer; out Value: TValue): Boolean; inline;
 
     property Count: Integer read FCount;
@@ -75,7 +77,7 @@ type
     function GetCount: Integer;
 
   public
-    constructor Create(const PossibleCharacters: ISet<AnsiChar>;
+    constructor Create(const PossibleKeyCharacters: ISet<AnsiChar>;
                        InitialCapacity: Integer;
                        CapacityIncrement: Integer;
                        MaxKeyLengthForTrie: Integer);
@@ -91,27 +93,26 @@ type
 
 implementation
 
+const
+  INVALID_CHARACTER_INDEX = -1;
+
 // TTrie<TValue>
 
-constructor TTrie<TValue>.Create(const PossibleCharacters: ISet<AnsiChar>;
+constructor TTrie<TValue>.Create(const PossibleKeyCharacters: ISet<AnsiChar>;
                                  InitialCapacity: Integer;
                                  CapacityIncrement: Integer);
 var
   Index: Integer;
   Character: AnsiChar;
-  CharacterCode: Integer;
 begin
+  FillChar(FKeyIndexByCharacterCode, 256, -1);
   Index := 0;
-  for Character in PossibleCharacters do begin
-    CharacterCode := Ord(Character);
-    if (CharacterCode >= Length(FKeyIndexByCharacterCode)) then begin
-      SetLength(FKeyIndexByCharacterCode, CharacterCode + 1);
-    end;
-    FKeyIndexByCharacterCode[CharacterCode] := Index;
+  for Character in PossibleKeyCharacters do begin
+    FKeyIndexByCharacterCode[Character] := Index;
     Inc(Index);
   end;
   FCapacityIncrement := CapacityIncrement;
-  FPossibleCharacterCount := PossibleCharacters.Count;
+  FPossibleKeyCharacterCount := PossibleKeyCharacters.Count;
   Resize(InitialCapacity);
 end;
 
@@ -127,10 +128,14 @@ var
   NodeIndex: Integer;
   Character: AnsiChar;
   IndexIndex: Integer;
+  NodeSearch: TTrieNodeSearch;
 begin
   NodeIndex := 0;
   for Character in Key do begin
-    if (not TryGetNodeIndexIncremental(Character, IndexIndex, NodeIndex)) then begin
+    NodeSearch := TryGetNodeIndexIncremental(Character, IndexIndex, NodeIndex);
+    if (NodeSearch = tnsInvalid) then begin
+      raise EArgumentOutOfRangeException.Create('Key contains characters unsupported by this TTrie');
+    end else if (NodeSearch = tnsNotFound) then begin
       if (CreateIfMissing) then begin
         Inc(FLastUsedNodeIndex);
         if (FLastUsedNodeIndex = Length(FNodes)) then begin
@@ -146,16 +151,24 @@ begin
   Result := @FNodes[nodeIndex];
 end;
 
-function TTrie<TValue>.TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): Boolean;
+function TTrie<TValue>.TryGetNodeIndexIncremental(Character: AnsiChar; var IndexIndex, NodeIndex: Integer): TTrieNodeSearch;
 var
-  CharacterCode: Integer;
+  KeyIndex: Integer;
 begin
-  CharacterCode := Ord(Character);
-  // Step 1: get the index of where in the indexes array the index into nodes is found
-  IndexIndex := (NodeIndex * FPossibleCharacterCount) + FKeyIndexByCharacterCode[characterCode];
-  // Step 2: get the index of the node in FNodes
-  NodeIndex := FNodeIndexes[indexIndex];
-  Result := NodeIndex <> 0;
+  KeyIndex := FKeyIndexByCharacterCode[Character];
+  if (KeyIndex = INVALID_CHARACTER_INDEX) then begin
+    Result := tnsInvalid;
+  end else begin
+    // Step 1: get the index of where in the indexes array the index into nodes is found
+    IndexIndex := (NodeIndex * FPossibleKeyCharacterCount) + KeyIndex;
+    // Step 2: get the index of the node in FNodes
+    NodeIndex := FNodeIndexes[indexIndex];
+    if (NodeIndex = 0) then begin
+      Result := tnsNotFound;
+    end else begin
+      Result := tnsFound;
+    end;
+  end;
 end;
 
 function TTrie<TValue>.TryGetValueByNodeIndex(NodeIndex: Integer; out Value: TValue): Boolean;
@@ -172,7 +185,7 @@ begin
   SetLength(FNodes, NewSize);
   FillChar(FNodes[oldSize], NewSize - oldSize, 0);
 
-  NewSize := NewSize * FPossibleCharacterCount;
+  NewSize := NewSize * FPossibleKeyCharacterCount;
   OldSize := Length(FNodeIndexes);
   SetLength(FNodeIndexes, NewSize);
   FillChar(FNodeIndexes[oldSize], NewSize - OldSize, 0);
@@ -234,13 +247,13 @@ end;
 
 // TTrieDictionary<TValue>
 
-constructor TTrieDictionary<TValue>.Create(const PossibleCharacters: ISet<AnsiChar>;
+constructor TTrieDictionary<TValue>.Create(const PossibleKeyCharacters: ISet<AnsiChar>;
                                            InitialCapacity: Integer;
                                            CapacityIncrement: Integer;
                                            MaxKeyLengthForTrie: Integer);
 begin
   inherited Create;
-  FTrie := TTrie<TValue>.Create(PossibleCharacters,
+  FTrie := TTrie<TValue>.Create(PossibleKeyCharacters,
                                 Trunc(InitialCapacity / 2),
                                 CapacityIncrement);
   FDictionary := TDictionary<AnsiString, TValue>.Create(InitialCapacity div 2);

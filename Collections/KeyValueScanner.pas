@@ -106,7 +106,7 @@ begin
   while (Index <= TextLength) do begin
     Character := Text[Index];
     PreviousKeyNodeIndex := KeyNodeIndex;
-    if (FValuePositionsByKey.TryGetNodeIndexIncremental(Character, _, KeyNodeIndex)) then begin
+    if (FValuePositionsByKey.TryGetNodeIndexIncremental(Character, _, KeyNodeIndex) = tnsFound) then begin
       Inc(Index);
     end else if (Character = KeyValueSeparator ) then begin
       // Skip to end of key-value-pair
