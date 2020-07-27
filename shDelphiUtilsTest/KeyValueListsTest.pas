@@ -103,11 +103,11 @@ begin
       Strings := TStringList.Create;
       try
         Strings.Add('Key1=' + 'Value1');
-        Strings.Add('Key4=' + 'Value4' + IntToStr(Index));
+        Strings.Add('Key4=' + 'Value4');
         Strings.Add('Key3');
         Strings.Add('Key2=');
         Strings.Add('Key5=' + 'Value5');
-        Strings.Add('Key4=' + 'Value4');
+        Strings.Add('Key4=' + 'Value4' + IntToStr(Index));
         Map.SetStrings(Strings);
       finally
         Strings.Free;
