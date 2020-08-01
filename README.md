@@ -10,6 +10,7 @@ Unlike my C# utilities, which are very representative of how I write production 
 
 * __TConcurrentQueue__: Experimental queue for use with multiple reader- and writer-threads without locking. Uses Interlocked operations for synchronization.
 * __TGrowingStringMap__: A never-shrinking key value list parsed efficiently from a text-representation of sorted key value pairs
+* __TMostRecentUpdateQueue__: Experimental Delphi implementation of the [Most Recent Update Pattern](https://personalnexus.wordpress.com/2011/02/27/a-modest-proposal-the-most-recent-update-pattern/)
 * __TSet__: Basic set implementation based on TDictionary.
 * __TSlimStringMap__: A string map that is optimzed for minimal memory footprint at the expense of more frequent memory reallocations
 * __TStringKeyValueScanner__: Experimental parser for a set of known keys in the text representation of key value pairs

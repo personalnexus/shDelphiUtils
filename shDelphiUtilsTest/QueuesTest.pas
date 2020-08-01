@@ -144,8 +144,56 @@ begin
   end;
 end;
 
+procedure TestMostRecentUpdateQueue;
+var
+  Queue: TMostRecentUpdateQueue<TObject>;
+  Updatable1, Updatable2: TUpdatable<TObject>;
+  Update1, Update2a, Update2b: TObject;
+  ActualUpdate: TObject;
+begin
+  Queue      := TMostRecentUpdateQueue<TObject>.Create;
+  Updatable1 := TUpdatable<TObject>.Create;
+  Updatable2 := TUpdatable<TObject>.Create;
+  Update1    := TObject.Create;
+  Update2a   := TObject.Create;
+  Update2b   := TObject.Create;
+  try
+    //
+    // Enqueue without replacement
+    //
+    Queue.Enqueue(Updatable1, Update1);
+    Assert(Queue.TryDequeue(ActualUpdate), 'There should be an update in the queue');
+    Assert(Update1 = ActualUpdate, 'Expected Update1 in queue');
+    //
+    // Enqueue with replacement
+    //
+    Queue.Enqueue(Updatable2, Update2a);
+    Queue.Enqueue(Updatable2, Update2b);
+    Assert(Queue.TryDequeue(ActualUpdate), 'There should be an update in the queue');
+    Assert(Update2b = ActualUpdate, 'Expected Update2b in queue');
+    //
+    // Queue empty
+    //
+    Assert(not Queue.TryDequeue(ActualUpdate));
+    //
+    // Free an updatable that is to be freed
+    //
+    Queue.Enqueue(Updatable1, Update1);
+    Updatable1.FreeIfNotQueued;
+
+    Writeln(FormatDateTime('hh:mm:ss', Now) + ' Completed MostRecentUpdateQueue successfully');
+  finally
+    Queue.Free;
+    // Update1 has been freed by FreeIfNotQueued;
+    // Update2a has been freed when it was replaced
+    Update2b.Free;
+    Updatable2.Free;
+  end;
+end;
+
 procedure Run;
 begin
+  TestMostRecentUpdateQueue;
   Writeln('Testing with ' + IntToStr(THREAD_COUNT * MESSAGE_COUNT) + ' messages.');
   ExecuteWithQueue(TestEnqueueSingleThreaded, 'EnqueueSingleThreaded');
   ExecuteWithQueue(TestEnqueueMultiThreaded, 'EnqueueMultiThreaded');
