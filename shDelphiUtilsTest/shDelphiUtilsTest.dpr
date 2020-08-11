@@ -6,14 +6,16 @@ uses
   QueuesTest in 'QueuesTest.pas',
   SetsTest in 'SetsTest.pas',
   CommonTest in 'CommonTest.pas',
-  KeyValueListsTest in 'KeyValueListsTest.pas';
+  KeyValueListsTest in 'KeyValueListsTest.pas',
+  TriesTest in 'TriesTest.pas';
 
 begin
   ReportMemoryLeaksOnShutdown := True;
 
-  KeyValueListsTest.Run;
   CommonTest.Run;
+  KeyValueListsTest.Run;
   QueuesTest.Run;
+  TriesTest.Run;
   SetsTest.Run;
 
   Writeln;

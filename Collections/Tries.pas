@@ -62,7 +62,7 @@ type
   ///<summary>Experimental IDictionary implementation that combines an array for
   /// single character keys with a TTrie for short keys and finally a TDictionary
   /// for long keys</summary>
-  TTrieDictionary<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
+  TMultiLengthKeyTrie<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
   private
     FArray: array[AnsiChar] of TTrieNode<TValue>; // for single character keys
     FTrie: IDictionary<AnsiString, TValue>;       // for short keys
@@ -89,6 +89,40 @@ type
     function TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
 
     property Count: Integer read FCount;
+  end;
+
+  ///<summary>Given a long key, returns a shortened key suitable for use in TShortenedKeyTrie</summary>
+  TTrieKeyShortener = function(const LongKey: AnsiString): AnsiString;
+
+  TShortenedKeyTrieBucket<TValue> = record
+    LongKey: AnsiString;
+    Value:   TValue;
+  end;
+
+  ///<summary>Experimental IDictionary implementation that given long keys uses
+  /// a shortening function to produce short keys for use in a TTrie accepting
+  /// the risk (assumed to be small) of key collisions.</summary>
+  TShortenedKeyTrie<TValue> = class(TInterfacedObject, IDictionary<AnsiString, TValue>)
+  private
+    FBucketsByShortKey: TTrie<TList<TShortenedKeyTrieBucket<TValue>>>;
+    FKeyShortener:      TTrieKeyShortener;
+
+    function GetCount: Integer;
+
+  public
+    constructor Create(const PossibleKeyCharacters: ISet<AnsiChar>;
+                       InitialCapacity: Integer;
+                       CapacityIncrement: Integer;
+                       KeyShortener: TTrieKeyShortener);
+    destructor Destroy; override;
+
+    procedure Add(const LongKey: AnsiString; const Value: TValue);
+    function ContainsKey(const LongKey: AnsiString): Boolean;
+    function Remove(const LongKey: AnsiString): Boolean;
+    function TryGetValue(const LongKey: AnsiString; out Value: TValue): Boolean;
+
+    property Count:        Integer           read GetCount;
+    property OnShortenKey: TTrieKeyShortener read FKeyShortener write FKeyShortener; //TODO: nil check in setter
   end;
 
 implementation
@@ -245,9 +279,9 @@ begin
   end;
 end;
 
-// TTrieDictionary<TValue>
+// TMultiLengthKeyTrie<TValue>
 
-constructor TTrieDictionary<TValue>.Create(const PossibleKeyCharacters: ISet<AnsiChar>;
+constructor TMultiLengthKeyTrie<TValue>.Create(const PossibleKeyCharacters: ISet<AnsiChar>;
                                            InitialCapacity: Integer;
                                            CapacityIncrement: Integer;
                                            MaxKeyLengthForTrie: Integer);
@@ -261,27 +295,27 @@ begin
   FMaxKeyLengthForTrie := MaxKeyLengthForTrie;
 end;
 
-destructor TTrieDictionary<TValue>.Destroy;
+destructor TMultiLengthKeyTrie<TValue>.Destroy;
 begin
   FTrie := nil;
   FreeAndNil(FDictionary);
 end;
 
-// TTrieDictionary<TValue> - Helper methods
+// TMultiLengthKeyTrie<TValue> - Helper methods
 
-procedure TTrieDictionary<TValue>.HandleKeyNotification(Sender: TObject; const Key: AnsiString; Action: TCollectionNotification);
+procedure TMultiLengthKeyTrie<TValue>.HandleKeyNotification(Sender: TObject; const Key: AnsiString; Action: TCollectionNotification);
 begin
   FKeyWasRemovedFromDictionary := Action = cnRemoved;
 end;
 
-function TTrieDictionary<TValue>.GetCount: Integer;
+function TMultiLengthKeyTrie<TValue>.GetCount: Integer;
 begin
   Result := FCount;
 end;
 
-// TTrieDictionary<TValue> - IDictionary
+// TMultiLengthKeyTrie<TValue> - IDictionary
 
-procedure TTrieDictionary<TValue>.Add(const Key: AnsiString; const Value: TValue);
+procedure TMultiLengthKeyTrie<TValue>.Add(const Key: AnsiString; const Value: TValue);
 var
   KeyLength: Integer;
 begin
@@ -302,7 +336,7 @@ begin
   Inc(FCount);
 end;
 
-function TTrieDictionary<TValue>.ContainsKey(const Key: AnsiString): Boolean;
+function TMultiLengthKeyTrie<TValue>.ContainsKey(const Key: AnsiString): Boolean;
 var
   KeyLength: Integer;
 begin
@@ -316,7 +350,7 @@ begin
   end;
 end;
 
-function TTrieDictionary<TValue>.Remove(const Key: AnsiString): Boolean;
+function TMultiLengthKeyTrie<TValue>.Remove(const Key: AnsiString): Boolean;
 var
   KeyLength: Integer;
 begin
@@ -338,7 +372,7 @@ begin
   end;
 end;
 
-function TTrieDictionary<TValue>.TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
+function TMultiLengthKeyTrie<TValue>.TryGetValue(const Key: AnsiString; out ResultValue: TValue): Boolean;
 var
   KeyLength: Integer;
 begin
@@ -352,6 +386,127 @@ begin
     Result := FTrie.TryGetValue(Key, ResultValue);
   end else begin
     Result := FDictionary.TryGetValue(Key, ResultValue);
+  end;
+end;
+
+// TShortenedKeyTrie<TValue>
+
+constructor TShortenedKeyTrie<TValue>.Create(const PossibleKeyCharacters: ISet<AnsiChar>;
+                                             InitialCapacity: Integer;
+                                             CapacityIncrement: Integer;
+                                             KeyShortener: TTrieKeyShortener);
+begin
+  inherited Create;
+  FBucketsByShortKey := TTrie<TList<TShortenedKeyTrieBucket<TValue>>>.Create(PossibleKeyCharacters,
+                                                                             InitialCapacity,
+                                                                             CapacityIncrement);
+  OnShortenKey := KeyShortener;
+end;
+
+destructor TShortenedKeyTrie<TValue>.Destroy;
+var
+  Index: Integer;
+begin
+  for Index := 0 to Length(FBucketsByShortKey.FNodes) - 1 do begin
+    if ((FBucketsByShortKey.FNodes[Index].HasValue) and
+        (FBucketsByShortKey.FNodes[Index].Value <> nil)) then begin
+      FBucketsByShortKey.FNodes[Index].Value.Free;
+    end;
+  end;
+  FreeAndNil(FBucketsByShortKey);
+
+  inherited Destroy;
+end;
+
+function TShortenedKeyTrie<TValue>.GetCount: Integer;
+begin
+  Result := FBucketsByShortKey.Count;
+end;
+
+// TShortenedKeyTrie<TValue> - IDictionary
+
+procedure TShortenedKeyTrie<TValue>.Add(const LongKey: AnsiString; const Value: TValue);
+var
+  ShortKey:   AnsiString;
+  BucketList: TList<TShortenedKeyTrieBucket<TValue>>;
+  Bucket:     TShortenedKeyTrieBucket<TValue>;
+  Index:      Integer;
+begin
+  ShortKey := FKeyShortener(LongKey);
+  if (not FBucketsByShortKey.TryGetValue(ShortKey, BucketList)) then begin
+    BucketList := TList<TShortenedKeyTrieBucket<TValue>>.Create;
+    BucketList.Capacity := 1;
+    FBucketsByShortKey.Add(ShortKey, BucketList);
+  end;
+  //
+  // We assume the risk of key collision is small, so the list is not sorted
+  //
+  for Index := 0 to BucketList.Count - 1 do begin
+    if (BucketList[Index].LongKey = LongKey) then begin
+      raise EArgumentException.CreateFmt('Key %s already exists', [LongKey]);
+    end;
+  end;
+  Bucket.LongKey := LongKey;
+  Bucket.Value   := Value;
+  BucketList.Add(Bucket);
+end;
+
+function TShortenedKeyTrie<TValue>.Remove(const LongKey: AnsiString): Boolean;
+var
+  ShortKey:   AnsiString;
+  BucketList: TList<TShortenedKeyTrieBucket<TValue>>;
+  Bucket:     TShortenedKeyTrieBucket<TValue>;
+  Index:      Integer;
+begin
+  Result   := False;
+  ShortKey := FKeyShortener(LongKey);
+  if (FBucketsByShortKey.TryGetValue(ShortKey, BucketList)) then begin
+    if (BucketList.Count = 1) then begin
+      //
+      // The last value to be removed from the bucket list removes the list from
+      // the trie
+      //
+      if (BucketList[0].LongKey = LongKey) then begin
+        FBucketsByShortKey.Remove(ShortKey);
+        BucketList.Free;
+        Result := True;
+      end;
+    end else begin
+      for Index := 0 to BucketList.Count - 1 do begin
+        if (BucketList[Index].LongKey = LongKey) then begin
+          BucketList.Delete(Index);
+          Result := True;
+          Break;
+        end;
+      end;
+    end;
+  end;
+end;
+
+function TShortenedKeyTrie<TValue>.ContainsKey(const LongKey: AnsiString): Boolean;
+var
+  _: TValue;
+begin
+  Result := TryGetValue(LongKey, _);
+end;
+
+function TShortenedKeyTrie<TValue>.TryGetValue(const LongKey: AnsiString; out Value: TValue): Boolean;
+var
+  ShortKey:   AnsiString;
+  BucketList: TList<TShortenedKeyTrieBucket<TValue>>;
+  Bucket:     TShortenedKeyTrieBucket<TValue>;
+  Index:      Integer;
+begin
+  Result   := False;
+  ShortKey := FKeyShortener(LongKey);
+  if (FBucketsByShortKey.TryGetValue(ShortKey, BucketList)) then begin
+    for Index := 0 to BucketList.Count - 1 do begin
+      if (BucketList[Index].LongKey = LongKey) then begin
+        Value  := BucketList[Index].Value;
+        Result := True;
+        Break;
+      end;
+    end;
   end;
 end;
 
