@@ -31,7 +31,8 @@ type
     procedure HandleKeyNotification(Sender: TObject; const Key: T; Action: TCollectionNotification);
 
   public
-    constructor Create;
+    constructor Create; overload;
+    constructor Create(Values: array of T); overload;
     destructor Destroy; override;
 
     procedure Add(const Value: T);
@@ -74,6 +75,16 @@ begin
 end;
 
 // TSet<T>
+
+constructor TSet<T>.Create(Values: array of T);
+var
+  Value: T;
+begin
+  Create;
+  for Value in Values do begin
+    Add(Value);
+  end;
+end;
 
 constructor TSet<T>.Create;
 begin
