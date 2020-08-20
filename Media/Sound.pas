@@ -49,8 +49,10 @@ type
 
 
 function WaveMapperSupports(ACapability: Cardinal): Boolean;
-function WaveOutGetVolumePercentage(out AVolumePercentage: TPercentage): Cardinal;
-function WaveOutSetVolumePercentage(AVolumePercentage: TPercentage): Cardinal;
+function WaveOutGetVolumePercentage(out AVolumePercentage: TPercentage): Cardinal; overload;
+function WaveOutGetVolumePercentage(out ALeftVolumePercentage, ARightVolumePercentage: TPercentage): Cardinal; overload;
+function WaveOutSetVolumePercentage(AVolumePercentage: TPercentage): Cardinal; overload;
+function WaveOutSetVolumePercentage(ALeftVolumePercentage, ARightVolumePercentage: TPercentage): Cardinal; overload;
 
 
 implementation
@@ -67,25 +69,42 @@ end;
 
 function WaveOutGetVolumePercentage(out AVolumePercentage: TPercentage): Cardinal;
 var
-  Volume:     Cardinal;
-  LeftVolume: Word;
+  _: TPercentage;
+begin
+  Result := WaveOutGetVolumePercentage(AVolumePercentage, _);
+end;
+
+function WaveOutGetVolumePercentage(out ALeftVolumePercentage, ARightVolumePercentage: TPercentage): Cardinal;
+var
+  Volume:      Cardinal;
+  LeftVolume:  Word;
+  RightVolume: Word;
 begin
   {$WARN BOUNDS_ERROR OFF}
   Result := WaveOutGetVolume(WAVE_MAPPER, @Volume);
   {$WARN BOUNDS_ERROR ON}
   if (Result = MMSYSERR_NOERROR) then begin
     LeftVolume := LoWord(Volume);
-    AVolumePercentage := Round(100 * LeftVolume / MAXWORD);
+    ALeftVolumePercentage := Round(100 * LeftVolume / MAXWORD);
+    RightVolume := HiWord(Volume);
+    ARightVolumePercentage := Round(100 * RightVolume / MAXWORD);
   end;
 end;
 
 function WaveOutSetVolumePercentage(AVolumePercentage: TPercentage): Cardinal;
-var
-  Volume: Word;
 begin
-  Volume := Round(MAXWORD * AVolumePercentage / 100);
+  Result := WaveOutSetVolumePercentage(AVolumePercentage, AVolumePercentage);
+end;
+
+function WaveOutSetVolumePercentage(ALeftVolumePercentage, ARightVolumePercentage: TPercentage): Cardinal;
+var
+  LeftVolume:  Word;
+  RightVolume: Word;
+begin
+  LeftVolume  := Round(MAXWORD * ALeftVolumePercentage / 100);
+  RightVolume := Round(MAXWORD * ARightVolumePercentage / 100);
   {$WARN BOUNDS_ERROR OFF}
-  Result := WaveOutSetVolume(WAVE_MAPPER, MakeLong(Volume, Volume));
+  Result := WaveOutSetVolume(WAVE_MAPPER, MakeLong(LeftVolume, RightVolume));
   {$WARN BOUNDS_ERROR ON}
 end;
 
